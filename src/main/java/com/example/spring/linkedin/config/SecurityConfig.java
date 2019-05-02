@@ -1,25 +1,27 @@
 package com.example.spring.linkedin.config;
 
 import java.util.Arrays;
-import java.util.List;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.FormHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
-import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
-import com.example.spring.linkedin.oauth2.CustomOAuth2AccessTokenResponseClient;
+import com.example.spring.linkedin.oauth2.user.LinkedInUser;
+import com.example.spring.oauth2.CustomOAuth2AccessTokenResponseHttpMessageConverter;
+import com.example.spring.oauth2.LoggingClientHttpRequestInterceptor;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfiguig
+public class SecurityConfig
 		extends WebSecurityConfigurerAdapter {
 
 	@Override
@@ -82,25 +84,26 @@ public class SecurityConfiguig
 
 				// ユーザー情報エンドポイント
 				.userInfoEndpoint()
+				.customUserType(LinkedInUser.class, "linkedin")
 				.and()
 
 		;
 
 	}
 
-	private CustomOAuth2AccessTokenResponseClient accessTokenResponseClient() {
+	OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
+		DefaultAuthorizationCodeTokenResponseClient client = new DefaultAuthorizationCodeTokenResponseClient();
 
-		RestTemplate template = new RestTemplate(Arrays.asList(
+		RestTemplate restTemplate = new RestTemplate(Arrays.asList(
 				new FormHttpMessageConverter(),
-				new MappingJackson2HttpMessageConverter(),
-				new OAuth2AccessTokenResponseHttpMessageConverter()));
+				new CustomOAuth2AccessTokenResponseHttpMessageConverter()));
 
-		template.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
+		restTemplate.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
+		restTemplate.setInterceptors(Arrays.asList(new LoggingClientHttpRequestInterceptor()));
 
-		return new CustomOAuth2AccessTokenResponseClient(template);
-	}
+		client.setRestOperations(restTemplate);
 
-	<T> List<T> $(@SuppressWarnings("unchecked") T... ts) {
-		return Arrays.asList(ts);
+		return client;
+
 	}
 }
